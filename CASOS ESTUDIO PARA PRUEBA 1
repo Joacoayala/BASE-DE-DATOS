@@ -1,0 +1,187 @@
+CASO 01 --NO SE SABE SI ENTRA EN LA PRUEBA ESTE CASO
+Requerimiento:
+Desarrolle una consulta SQL que agrupe a los guardias según los siguientes rangos de edad:
+•	Menos de 20 años
+•	Entre 21 y 30 años
+•	Entre 31 y 40 años
+•	Entre 41 y 50 años
+•	51 años o más 
+Los resultados deben mostrarse ordenados ascendentemente por el rango de edad
+--------------------------------------------------------------------------------------
+SELECT 
+    -- Iniciamos el CASE para crear etiquetas de texto basadas en una condición
+    CASE 
+        -- TRUNC corta los decimales. MONTHS_BETWEEN saca meses entre hoy (SYSDATE) y el nacimiento.
+        -- Dividimos por 12 para convertir esos meses en años.
+        WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, FECHA_NAC_GUARDIA)/12) <= 20 THEN 'HASTA 20 AÑOS'
+        
+        -- BETWEEN incluye los límites (21 y 30)
+        WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, FECHA_NAC_GUARDIA)/12) BETWEEN 21 AND 30 THEN '21 A 30 AÑOS'
+        
+        WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, FECHA_NAC_GUARDIA)/12) BETWEEN 31 AND 40 THEN '31 A 40 AÑOS'
+        
+        WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, FECHA_NAC_GUARDIA)/12) BETWEEN 41 AND 50 THEN '41 A 50 AÑOS'
+        
+        -- Si no es ninguna de las anteriores, entra en esta categoría
+        ELSE '51 AÑOS O MAS'
+        
+    -- Cerramos el CASE y le ponemos el nombre que veremos en el encabezado de la columna
+    END AS "RANGO EDAD",
+
+    -- COUNT(*) cuenta todas las filas que caen en cada grupo creado arriba
+    COUNT(*) AS "TOTAL PERSONAS"
+
+-- Definimos la tabla de donde sacamos la información
+FROM GUARDIA
+
+-- El GROUP BY es obligatorio porque usamos COUNT. 
+-- Aquí le decimos a SQL: "Junta en una sola fila a todos los que tengan el mismo RANGO_EDAD"
+GROUP BY 
+    CASE 
+        WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, FECHA_NAC_GUARDIA)/12) <= 20 THEN 'HASTA 20 AÑOS'
+        WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, FECHA_NAC_GUARDIA)/12) BETWEEN 21 AND 30 THEN '21 A 30 AÑOS'
+        WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, FECHA_NAC_GUARDIA)/12) BETWEEN 31 AND 40 THEN '31 A 40 AÑOS'
+        WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, FECHA_NAC_GUARDIA)/12) BETWEEN 41 AND 50 THEN '41 A 50 AÑOS'
+        ELSE '51 AÑOS O MAS'
+    END
+
+-- Ordenamos el resultado por la columna "RANGO_EDAD" de forma ascendente (A-Z)
+ORDER BY "RANGO EDAD" ASC;
+
+-----------------------------------------------------------------------------------------------------------
+CASO 02 --ESTE SI ENTRA 100%
+Se necesita una consulta SQL que liste a todos los guardias activos, mostrando su código, nombre completo, edad actual, años de servicio en la empresa,
+fecha estimada de jubilación (calculada a los 65 años de edad) y el recinto al cual están asignados.
+
+Condiciones Específicas:
+•	Se requiere mostrar los siguientes datos según la imagen de más abajo.
+•	La fecha de jubilación debe calcularse a los 65 años de cada guardia.
+•	La edad y los años de servicio deben mostrarse en números enteros.
+•	El listado debe estar ordenado por la edad del guardia de forma descendente, para priorizar a aquellos guardias que se jubilarán primero
+
+SELECT 
+    -- CÓDIGO DEL GUARDIA
+    G.ID_GUARDIA AS "CÓDIGO",
+    
+    -- NOMBRE Y APELLIDO CONCATENADOS
+    G.PNOMBRE_GUARDIA || ' ' || G.APPATERNO_GUARDIA AS "NOMBRE COMPLETO",
+    
+    -- EDAD ACTUAL EN NÚMEROS ENTEROS
+    TRUNC(MONTHS_BETWEEN(SYSDATE, G.FECHA_NAC_GUARDIA) / 12) AS "EDAD ACTUAL",
+    
+    -- AÑOS DE SERVICIO EN LA EMPRESA
+    TRUNC(MONTHS_BETWEEN(SYSDATE, G.FECHA_CONTRATO_GUARDIA) / 12) AS "AÑOS SERVICIO",
+    
+    -- FECHA DE JUBILACIÓN ESTIMADA (SUMANDO 65 AÑOS)
+    ADD_MONTHS(G.FECHA_NAC_GUARDIA, 65 * 12) AS "FECHA JUBILACIÓN",
+    
+    -- NOMBRE DEL RECINTO ASIGNADO (USANDO EL JOIN)
+    R.NOMBRE_RECINTO AS "RECINTO"
+
+-- ORIGEN DE DATOS Y UNIÓN DE TABLAS
+FROM GUARDIA G
+JOIN RECINTO R ON (G.ID_RECINTO = R.ID_RECINTO)
+
+-- ORDENAMOS POR EDAD DESCENDENTE (LOS MÁS CERCANOS A JUBILARSE PRIMERO)
+ORDER BY "EDAD ACTUAL" DESC;
+----------------------------------------------------------------------------------------------------------------
+
+CASO 03
+La empresa TNT Lit Cargo necesita analizar la distribución de sus recintos por zona y comuna, 
+con el fin de categorizarlos según la cantidad de ubicaciones que posee en cada sector. 
+Para esto, se requiere generar un reporte que muestre las zonas TNT, las comunas asociadas, la categoría del recinto (según la cantidad) y el total de recintos por comuna.
+
+La categorización debe realizarse de la siguiente manera:
+•	"Único": Si la comuna tiene solo 1 recinto en la zona TNT.
+•	"Múltiple": Si la comuna tiene entre 2 y 3 recintos en la zona TNT.
+La información solicitada debe mostrarse en el siguiente formato:
+•	Zona TNT
+•	Comuna
+•	Categoría Recinto
+•	Total Recintos
+Además, el reporte debe estar ordenado descendentemente por el nombre de la zona TNT para facilitar el análisis por áreas.
+------------------------------------------------------------------------------------------------------------------
+
+SELECT 
+    -- 1. CONCATENAMOS EL TEXTO FIJO CON EL NOMBRE DE LA COMUNA
+    'TNT LIT CARGO ZONA ' || UPPER(C.NOMBRE_COMUNA) AS "ZONA TNT",
+    
+    -- 2. NOMBRE DE LA COMUNA
+    C.NOMBRE_COMUNA AS "COMUNA",
+    
+    -- 3. CATEGORIZACIÓN SEGÚN LA CANTIDAD DE RECINTOS (USANDO ID_RECINTO SIN S)
+    CASE 
+        WHEN COUNT(R.ID_RECINTO) = 1 THEN 'ÚNICO'
+        WHEN COUNT(R.ID_RECINTO) BETWEEN 2 AND 3 THEN 'MÚLTIPLE'
+    END AS "CATEGORÍA RECINTO",
+    
+    -- 4. TOTAL DE RECINTOS POR COMUNA
+    COUNT(R.ID_RECINTO) AS "TOTAL RECINTOS"
+
+-- UNIMOS LAS TABLAS COMUNA Y RECINTO
+FROM COMUNA C
+JOIN RECINTO R ON (C.ID_COMUNA = R.ID_COMUNA)
+
+-- AGRUPAMOS POR EL NOMBRE DE LA COMUNA PARA QUE EL CONTEO SEA POR SECTOR
+GROUP BY C.NOMBRE_COMUNA
+
+-- ORDENAMOS DE FORMA DESCENDENTE POR LA ZONA
+ORDER BY "ZONA TNT" DESC;
+-----------------------------------------------------------------------------------------------------------------------------
+CASO 04
+La empresa TNT Lit Cargo, como parte de su política de transparencia y control operativo, requiere generar un informe detallado de los turnos trabajados por los guardias durante los últimos 6 meses. Este reporte permitirá al área de Finanzas calcular las remuneraciones correspondientes, considerando diferencias entre días laborales y fines de semana, así como la cantidad de días trabajados por cada guardia.
+Requerimiento:
+Se necesita una consulta SQL que muestre:
+Código del GUARDIA
+Nombre completo del guardia 
+Día de la semana en que inició el turno 
+Tipo de turno, clasificado como:
+o	"Fin de semana" (si el turno inició en sábado o domingo).
+o	"Día laboral" (para los demás días).
+	Valor diario del turno 
+	Total de días trabajados 
+	Valor total a pagar por los turnos
+	Filtros y Orden:
+•	Solo se deben incluir turnos iniciados en los últimos 6 meses (relativo a la fecha actual).
+•	El listado final debe ordenarse ascendentemente por código de guardia y descendentemente por el día de la semana del inicio del turno.
+SELECT 
+    -- 1. CÓDIGO DEL GUARDIA
+    G.ID_GUARDIA AS "CÓDIGO GUARDIA",
+    
+    -- 2. NOMBRE COMPLETO
+    G.PNOMBRE_GUARDIA || ' ' || G.APPATERNO_GUARDIA AS "NOMBRE GUARDIA",
+    
+    -- 3. DÍA DE LA SEMANA (USAMOS TO_CHAR PARA OBTENER EL NOMBRE DEL DÍA)
+    TO_CHAR(T.FECHA_INI_TURNO, 'DAY', 'NLS_DATE_LANGUAGE=SPANISH') AS "DÍA INICIO TURNO",
+    
+    -- 4. CLASIFICACIÓN DEL TIPO DE TURNO (CASO DENTRO DE OTRO CASO)
+    -- EL NÚMERO 6 ES SÁBADO Y 7 ES DOMINGO EN MUCHAS CONFIGURACIONES
+    CASE 
+        WHEN TO_CHAR(T.FECHA_INI_TURNO, 'D') IN ('6', '7') THEN 'FIN DE SEMANA'
+        ELSE 'DÍA LABORAL'
+    END AS "TIPO TURNO",
+    
+    -- 5. VALOR DIARIO DEL TURNO (VIENE DE LA TABLA TURNO)
+    T.VALOR_TURNO AS "VALOR DIARIO",
+    
+    -- 6. TOTAL DE DÍAS TRABAJADOS (DIFERENCIA ENTRE FIN E INICIO)
+    -- SUMAMOS +1 PARA CONTAR EL DÍA INICIAL
+    (T.FECHA_TERMINO_TURNO - T.FECHA_INI_TURNO) + 1 AS "TOTAL DÍAS",
+    
+    -- 7. VALOR TOTAL A PAGAR (VALOR DIARIO MULTIPLICADO POR DÍAS)
+    T.VALOR_TURNO * ((T.FECHA_TERMINO_TURNO - T.FECHA_INI_TURNO) + 1) AS "TOTAL A PAGAR"
+
+-- UNIMOS TRES TABLAS: GUARDIA -> ASIGNAR -> TURNO
+FROM GUARDIA G
+JOIN ASIGNAR A ON (G.ID_GUARDIA = A.ID_GUARDIA)
+JOIN TURNO T ON (A.ID_TURNO = T.ID_TURNO)
+
+-- FILTRO: SOLO TURNOS DE LOS ÚLTIMOS 6 MESES
+WHERE T.FECHA_INI_TURNO >= ADD_MONTHS(SYSDATE, -6)
+
+-- ORDEN: CÓDIGO ASCENDENTE Y DÍA DE LA SEMANA DESCENDENTE
+ORDER BY G.ID_GUARDIA ASC, "DÍA INICIO TURNO" DESC;
+
+
+
+*HACER CASO 5 PROBABLEMTE ENTRARA
