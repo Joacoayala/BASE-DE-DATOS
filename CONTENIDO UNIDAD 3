@@ -1,0 +1,338 @@
+USUARIO (NO COMPARTIDA)
+--==============================================================================
+--HOJA DE TRABAJO DE PL/SQL
+--==============================================================================
+--==============================================================================
+--CASO 01
+--==============================================================================
+--***** DECLARACION DE VARIABLES*****
+DECLARE
+--***** DECLARACION DE VARIABLES*****
+V_NUMRUT                EMPLEADO.NUMRUT_EMP%TYPE; --NUMBER(10) 
+V_DVRUT                 EMPLEADO.DVRUT_EMP%TYPE;
+V_NOMBRE                EMPLEADO.NOMBRE_EMP%TYPE;
+V_APPATERNO             EMPLEADO.APPATERNO_EMP%TYPE;
+V_APMATERNO             EMPLEADO.APMATERNO_EMP%TYPE;
+V_SUELDO                EMPLEADO.SUELDO_EMP%TYPE;
+V_BONIF_EXTRA           NUMBER(12);
+V_POR_BONIF             NUMBER(3);
+
+BEGIN
+    
+    --INGRESOS PARAMETRICOS
+    V_POR_BONIF     := &Ingresar_bono;
+    V_NUMRUT        := &Ingresar_rut;
+
+    --UNDEFINE INGRESAR_BONO;
+    
+    
+    --CONSULTAR DATOS DE RUT INGRESADO
+    SELECT
+        DVRUT_EMP,NOMBRE_EMP,APPATERNO_EMP,APMATERNO_EMP,SUELDO_EMP
+    INTO
+        V_DVRUT,V_NOMBRE,V_APPATERNO,V_APMATERNO,V_SUELDO
+    FROM
+        EMPLEADO
+    WHERE
+        NUMRUT_EMP = V_NUMRUT
+    ;
+    
+    --CALCULO DE BONIFICACION
+    V_BONIF_EXTRA := V_SUELDO * (V_POR_BONIF/100);
+    
+    --IMPRESIONES POR TERMINAL
+    DBMS_OUTPUT.PUT_LINE('======================================================');
+    DBMS_OUTPUT.PUT_LINE('DATOS DE CALCULO DE BONIFICACION EXTRA DE '||V_POR_BONIF||'% DEL SUELDO');
+    DBMS_OUTPUT.PUT_LINE('======================================================');
+    DBMS_OUTPUT.PUT_LINE('NOMBRE EMPLEADO: '||V_NOMBRE||' '||V_APPATERNO||' '||V_APMATERNO);
+    DBMS_OUTPUT.PUT_LINE('RUT EMPLEADO: '||TO_CHAR(V_NUMRUT,'999G999G999')||'-'||V_DVRUT);
+    DBMS_OUTPUT.PUT_LINE('SUELDO EMPLEADO: '||TO_CHAR(V_SUELDO,'$999G999G999'));
+    DBMS_OUTPUT.PUT_LINE('BONIFICACION EXTRA: '||TO_CHAR(V_BONIF_EXTRA,'$999G999G999'));
+    DBMS_OUTPUT.PUT_LINE('======================================================');
+    DBMS_OUTPUT.PUT_LINE(' ');
+    
+    --11846972
+    
+END;
+/
+
+--==============================================================================
+--CASO 02
+--==============================================================================
+
+DECLARE
+    --DECLARACION DE VARIABLES
+    V_NUMRUT                CLIENTE.NUMRUT_CLI%TYPE;
+    V_DVRUT                 CLIENTE.DVRUT_CLI%TYPE;
+    V_NOMBRE                CLIENTE.NOMBRE_CLI%TYPE;
+    V_APPATERNO             CLIENTE.APPATERNO_CLI%TYPE;
+    V_APMATERNO             CLIENTE.APMATERNO_CLI%TYPE;
+    V_RENTA                 CLIENTE.RENTA_CLI%TYPE;
+    V_DESC_CIVIL            ESTADO_CIVIL.DESC_ESTCIVIL%TYPE;
+    V_CUMPLE_REQUISITOS     BOOLEAN := FALSE;
+    V_RENTA_MINIMA          NUMBER(10) := 800000;
+
+BEGIN
+    --INGRESO PARAMETRICO
+    V_NUMRUT := &INGRESAR_RUT;
+    
+    SELECT
+        CLI.DVRUT_CLI, CLI.NOMBRE_CLI, CLI.APPATERNO_CLI, CLI.APMATERNO_CLI,
+        CLI.RENTA_CLI, EC.DESC_ESTCIVIL
+    INTO
+        V_DVRUT,V_NOMBRE,V_APPATERNO,V_APMATERNO,V_RENTA,V_DESC_CIVIL
+    FROM
+        CLIENTE CLI
+        JOIN ESTADO_CIVIL EC ON (CLI.ID_ESTCIVIL = EC.ID_ESTCIVIL)
+    WHERE
+        CLI.NUMRUT_CLI = V_NUMRUT;
+        
+    --CONDICIONALES IF
+    
+    IF V_DESC_CIVIL IN ('Soltero','Separado','Divorciado') THEN
+        --PASA SI ES SOLTERO, SEPARADO O DIVORCIADO
+        IF V_DESC_CIVIL IN ('Separado','Divorciado') THEN
+            --PASA SI ES SEPARADO O DIVORCIADO         
+            IF V_RENTA >= V_RENTA_MINIMA THEN
+                --PASA SI ES SEPARADO O DIVORCIADO Y TIENE UNA RENTA SOBRE 800.000
+                V_CUMPLE_REQUISITOS := TRUE;            
+            END IF;         
+        ELSE
+            --PASA SI ES SOLTERO
+            V_CUMPLE_REQUISITOS := TRUE;
+        END IF;      
+    END IF;
+    
+    IF V_CUMPLE_REQUISITOS THEN
+        DBMS_OUTPUT.PUT_LINE('===================================================');
+        DBMS_OUTPUT.PUT_LINE('DATOS DEL CLIENTE');
+        DBMS_OUTPUT.PUT_LINE('===================================================');
+        DBMS_OUTPUT.PUT_LINE('RUT CLIENTE: '||TO_CHAR(V_NUMRUT,'999G999G999')||'-'||V_DVRUT);
+        DBMS_OUTPUT.PUT_LINE('NOMBRE CLIENTE: '||V_NOMBRE||' '||V_APPATERNO||' '||V_APMATERNO);
+        DBMS_OUTPUT.PUT_LINE('ESTADO CIVIL: '||V_DESC_CIVIL);
+        DBMS_OUTPUT.PUT_LINE('RENTA CLIENTE: '||TO_CHAR(V_RENTA,'$999G999G999'));
+        DBMS_OUTPUT.PUT_LINE('---------------------------------------------------');
+        DBMS_OUTPUT.PUT_LINE('CUMPLE CON LOS REQUISITOS DE LA PROMOCION DE MARKETING.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('NO CUMPLE CON LOS REQUISITOS DE LA PROMOCION DE MARKETING.');
+    END IF;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('NO SE HA ENCONTRADO EL RUT INGRESADO EN LA BASE DE DATOS.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('HA OCURRIDO UN ERROR INESPERADO');
+        DBMS_OUTPUT.PUT_LINE('CODIGO DE ERROR: '||SQLERRM);
+END;
+/
+
+--==============================================================================
+--CASO 03
+--==============================================================================
+
+DECLARE
+V_NUMRUT                    EMPLEADO.NUMRUT_EMP%TYPE;
+V_DVRUT                     EMPLEADO.DVRUT_EMP%TYPE;
+V_NOMBRE                    VARCHAR2(100);
+V_SUELDO_REGULAR            EMPLEADO.SUELDO_EMP%TYPE;
+V_POR_REAJ_1                NUMBER(10) := 8.5;
+V_POR_REAJ_2                NUMBER(10) := 20;
+V_VAL_REAJ_1                NUMBER(10);
+V_VAL_REAJ_2                NUMBER(10);
+V_SUELDO_REAJ_1             NUMBER(10);
+V_SUELDO_REAJ_2             NUMBER(10);
+v_SUELDO_MINIMO             NUMBER(6):=20000;
+V_SUELDO_MAX                NUMBER(6):=40000;
+
+
+BEGIN
+
+    --INGRESO PARAMETRICO
+    V_NUMRUT := &INGRESAR_RUT;
+
+    SELECT
+        DVRUT_EMP,
+        NOMBRE_EMP||' '||APPATERNO_EMP||' '||APMATERNO_EMP,
+        SUELDO_EMP
+    INTO
+        V_DVRUT,V_NOMBRE,V_SUELDO_REGULAR
+    FROM
+        EMPLEADO
+    WHERE
+        NUMRUT_EMP = V_NUMRUT;
+        
+    --SIMULACION 01 - 8.5%
+    V_VAL_REAJ_1        := V_SUELDO_REGULAR * (V_POR_REAJ_1/100);
+    V_SUELDO_REAJ_1     := V_SUELDO_REGULAR + V_VAL_REAJ_1;
+    
+    DBMS_OUTPUT.PUT_LINE('===========================================');
+    DBMS_OUTPUT.PUT_LINE('SIMULACION 01 - CALCULO DE 8.5% DE AUMENTO DE SUELDO');
+    DBMS_OUTPUT.PUT_LINE('===========================================');
+    DBMS_OUTPUT.PUT_LINE('              DATOS EMPLEADOS');
+    DBMS_OUTPUT.PUT_LINE('RUT EMPLEADO   :'|| TO_CHAR(V_NUMRUT, '999G999G999')||V_DVRUT);
+    DBMS_OUTPUT.PUT_LINE('NOMBRE EMPLEADO   :'||V_NOMBRE);
+    DBMS_OUTPUT.PUT_LINE('===========================================');
+    DBMS_OUTPUT.PUT_LINE('SUELDO ACTUAL   :'||TO_CHAR(V_SUELDO_REGULAR, '$999G999G999'));
+    DBMS_OUTPUT.PUT_LINE('REAJUSTE 8.5% :'||TO_CHAR(V_VAL_REAJ_1,'$999G999G999'));
+    DBMS_OUTPUT.PUT_LINE('SUELDO REAJUSTADO :'||TO_CHAR(V_SUELDO_REAJ_1, '$999G999G999'));
+    DBMS_OUTPUT.PUT_LINE('===========================================');
+    DBMS_OUTPUT.PUT_LINE('');
+
+    --SIMULACION 02 - 20% SI CUMPLE CON CONDICION ENTRE 200.000 Y 400.000
+    
+    IF V_SUELDO_REGULAR BETWEEN V_SUELDO_MINIMO AND V_SUELDO_MAX THEN
+    
+           --SIMULACION 01 - 20%
+        DBMS_OUTPUT.PUT_LINE('SIMULACION 02 - CALCULO DE 20% DE AUMENTO DE SUELDO');
+        DBMS_OUTPUT.PUT_LINE('RANGO DE SUELDO - $200.000 A $400.000--------');
+        DBMS_OUTPUT.PUT_LINE('===========================================');
+        V_VAL_REAJ_2        := V_SUELDO_REGULAR * (V_POR_REAJ_2/100);
+        V_SUELDO_REAJ_2    := V_SUELDO_REGULAR + V_VAL_REAJ_2;
+        DBMS_OUTPUT.PUT_LINE('SUELDO ACTUAL   :'||TO_CHAR(V_SUELDO_REGULAR, '$999G999G999'));
+        DBMS_OUTPUT.PUT_LINE('REAJUSTE 20% :'||TO_CHAR(V_VAL_REAJ_2,'$999G999G999'));
+        DBMS_OUTPUT.PUT_LINE('SUELDO REAJUSTADO :'||TO_CHAR(V_SUELDO_REAJ_2, '$999G999G999'));
+        DBMS_OUTPUT.PUT_LINE('===========================================');
+        DBMS_OUTPUT.PUT_LINE('');
+    
+    
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('===========================================');
+        DBMS_OUTPUT.PUT_LINE('SIMULACION 02 - CALCULO DE 20% DE AUMENTO DE SUELDO');
+        DBMS_OUTPUT.PUT_LINE('===========================================');
+        DBMS_OUTPUT.PUT_LINE('NO CUMPLE CON LOS RANGOS DE SUELDO.');
+
+
+    
+    END IF;
+    
+    
+    
+    
+END;
+
+
+--==============================================================================
+--CASO 04
+--==============================================================================
+
+DECLARE 
+    --DECLARACION DE VARIABLES
+    V_DESC_TIPO_PROPIEDAD           TIPO_PROPIEDAD.DESC_TIPO_PROPIEDAD&TYPE;
+    V_ID_TIPO_PROPIEDAD             TIPO_PROPIEDAD.ID_TIPO_PROPIEDAD&TYPE;
+    V_CONT_PROPIEDAD                NUMBER:=0;
+    V_CONT_VALOR_ARRIENDO           NUMBER:=0;
+    
+    --CURSOR 
+    CURSOR C_TIPO_PROPIEDAD IS
+        SELECT
+            ID_TIPO_PROPIEDAD, DESC_TIPO_PROPIEDAD
+        FROM
+            TIPO_PROPIEDAD;
+            
+BEGIN
+    --CICLO FOR
+    FOR i MIN IN C_TIPO_PROPIEAD LOOP
+        V_DESC_TIPO_PROPIEDAD    := i.DESC_TIPO_PROPIEDAD;     
+        V_ID_TIPO_PROPIEDAD      := i.ID_TIPO_PROPIEDAD;
+        
+        --RESETEAR VARIABLES CONTADORES
+        V_CONT_PROPIEDAD            :=0;
+        V_CONT_VALOR_ARRIENDO       :=0;
+        
+            
+        --CONSULTA PARA SUMAR ARRIENDO
+        SELECT
+            COUNT(*), SUM(VALOR_ARRIENDO)
+        INTO 
+            V_CONT_PROPIEDAD,  V_CONT_VALOR_ARRIENDO  
+            
+        FROM
+            PROPIEDAD
+       WHERE
+            ID_TIPO_PROPIEDAD = V_ID_TIPO_PROPIEDAD
+            
+        ;
+        
+       -- IMPRESION POR TERMINAL 
+       DBMS_OUTPUT.PUT_LINE('===========================================');
+       DBMS_OUTPUT.PUT_LINE('CALCULO DE PROPIEDAD');
+       DBMS_OUTPUT.PUT_LINE('===========================================');
+       DBMS_OUTPUT.PUT_LINE('TIPO DE PROPIEDAD      :'||V_DESC_TIPO_PROPIEDAD);
+       DBMS_OUTPUT.PUT_LINE('CANTIDAD DE PROPIEDADES  :||V_CONT_PROPIEDAD');
+       DBMS_OUTPUT.PUT_LINE('VALOR MENSUAL RECIBIDO    :'||TO_CHAR(V_CONT_VALOR_ARRIENDO,'999G999G999'));
+        
+    
+    END LOOP;
+
+
+END;
+
+
+
+----- USUARIO NORMAL
+
+--==============================================================================
+--HOJA DE TRABAJO DE SQL
+--==============================================================================
+
+
+--==============================================================================
+--CASO 01
+--==============================================================================
+
+--TABLAS A TRABAJAR
+
+SELECT * FROM EMPLEADO;
+DESC EMPLEADO;
+
+--CONSULTA
+SELECT
+    NUMRUT_EMP, DVRUT_EMP,NOMBRE_EMP,APPATERNO_EMP,APMATERNO_EMP,SUELDO_EMP
+FROM
+    EMPLEADO
+;
+
+--==============================================================================
+--CASO 02
+--==============================================================================
+
+--TABLAS A TRABAJAR
+
+SELECT * FROM CLIENTE;          --CLI
+SELECT * FROM ESTADO_CIVIL;     --EC
+
+--CONSULTA CON DATOS A TRABAJAR
+SELECT
+    CLI.NUMRUT_CLI, CLI.DVRUT_CLI, CLI.NOMBRE_CLI, CLI.APPATERNO_CLI, CLI.APMATERNO_CLI,
+    CLI.RENTA_CLI, EC.DESC_ESTCIVIL
+FROM
+    CLIENTE CLI
+    JOIN ESTADO_CIVIL EC ON (CLI.ID_ESTCIVIL = EC.ID_ESTCIVIL);
+
+
+--==============================================================================
+--CASO 04
+--==============================================================================
+
+--TABLAS A TRABAJAR
+SELECT * FROM PROPIEDAD;
+SELECT * FROM TIPO_PROPIEDAD;
+
+--CONSULTA SQL
+
+SELECT
+    ID_TIPO_PROPIEDAD,DESC_TIPO_PROPIEDAD
+FROM
+    TIPO_PROPIEDAD;
+    
+--CONSULTA PARA SUMAR ARRIENDO
+SELECT
+    COUNT(*), VALOR_ARRIENDO
+FROM
+    PROPIEDAD
+GROUP BY
+    VALOR_ARRIENDO;
+
+
+
+
